@@ -1,0 +1,47 @@
+procedure TForm7.btnRemoverRuidoClick(Sender: TObject);
+var
+  X, Y : Integer;
+  vBmpTemp : TBitmap;
+begin
+  vBmpTemp := TBitmap.Create;
+  vBmpTemp.Assign(Image.Picture.Bitmap);
+  for X := 0 to Image.Width - 1 do
+  begin
+    for Y := 0 to Image.Height - 1 do
+    begin
+      if ((Image.Canvas.Pixels[X, Y] >=  $00000000)  and
+          (Image.Canvas.Pixels[X, Y] <=  $00999999)) or
+          (Image.Canvas.Pixels[X, Y]  =  $00FEFEFE)  or
+          (Image.Canvas.Pixels[X, Y]  =  $00FAFAFA)  or
+          (Image.Canvas.Pixels[X, Y]  =  clBlack)    then
+      begin
+        if ((Image.Canvas.Pixels[X - 1, Y] >=  $00000000)  and
+            (Image.Canvas.Pixels[X + 1, Y] <=  $00999999)) then
+        begin
+          vBmpTemp.Canvas.Pixels[X, Y] := Image.Canvas.Pixels[X, Y];
+        end;
+      end;
+    end;
+  end;
+
+  Image.Picture := nil;
+
+  for X := 0 to vBmpTemp.Width - 1 do
+  begin
+    for Y := 0 to vBmpTemp.Height - 1 do
+    begin
+      if ((vBmpTemp.Canvas.Pixels[X, Y] >=  $00000000)  and
+          (vBmpTemp.Canvas.Pixels[X, Y] <=  $00999999)) or
+          (vBmpTemp.Canvas.Pixels[X, Y]  =  $00FEFEFE)  or
+          (vBmpTemp.Canvas.Pixels[X, Y]  =  $00FAFAFA)  or
+          (vBmpTemp.Canvas.Pixels[X, Y]  =  clBlack)    then
+      begin
+        if ((vBmpTemp.Canvas.Pixels[X - 1, Y] >=  $00000000)  and
+            (vBmpTemp.Canvas.Pixels[X + 1, Y] <=  $00999999)) then
+        begin
+          Image.Canvas.Pixels[X, Y] := vBmpTemp.Canvas.Pixels[X, Y];
+        end;
+      end;
+    end;
+  end;
+end;
