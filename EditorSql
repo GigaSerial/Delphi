@@ -1,0 +1,274 @@
+unit uEditorSql;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls;
+
+type
+  TMemo = class (Vcl.StdCtrls.TMemo)
+  private
+    procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
+  protected
+    procedure Change; override;
+  public
+    PosLabel: TLabel;
+    function Col: Integer;
+    function TopLine: Integer;
+    function VisibleLines: Integer;
+  end;
+
+  TForm9 = class(TForm)
+    Memo1: TMemo;
+    procedure Memo1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure Memo1MouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form9: TForm9;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm9.Memo1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_F1 then
+    Memo1.Invalidate;
+end;
+
+function Separador(aCaratere: Char): Boolean;
+begin
+  case aCaratere of
+    '.', ';', ',', ':', '¡', '!', '·', '"', '''', '^', '+', '-', '*', '/', '\', '¨', ' ',
+    '`', '[', ']', '(', ')', 'º', 'ª', '{', '}', '?', '¿', '%', '=':
+      Result := True;
+    else
+      Result := False;
+  end;
+end;
+
+function ProximaPalavra(var aPalavra: String; var aPalavraAnterior: String): String;
+begin
+  Result   := '';
+  aPalavraAnterior := '';
+  if aPalavra <> '' then
+  begin
+    while (aPalavra <> '') and Separador(aPalavra[1]) do
+    begin
+      aPalavraAnterior := aPalavraAnterior + aPalavra[1];
+      Delete(aPalavra, 1, 1);
+    end;
+
+    while (aPalavra <> '') and not Separador(aPalavra[1]) do
+    begin
+      Result := Result + aPalavra[1];
+      Delete(aPalavra, 1, 1);
+    end;
+  end;
+end;
+
+function PalavraReservada(aTexto: String): Boolean;
+var
+  vListaPalavrasReservadas : TStringList;
+begin
+  Result := False;
+
+  vListaPalavrasReservadas := TStringList.Create;
+  vListaPalavrasReservadas.Clear;
+
+  vListaPalavrasReservadas.Add('select');
+  vListaPalavrasReservadas.Add('from');
+  vListaPalavrasReservadas.Add('with');
+  vListaPalavrasReservadas.Add('if');
+  vListaPalavrasReservadas.Add('case');
+  vListaPalavrasReservadas.Add('order');
+  vListaPalavrasReservadas.Add('by');
+  vListaPalavrasReservadas.Add('group');
+  vListaPalavrasReservadas.Add('else');
+  vListaPalavrasReservadas.Add('for');
+  vListaPalavrasReservadas.Add('from');
+  vListaPalavrasReservadas.Add('substring');
+  vListaPalavrasReservadas.Add('cast');
+  vListaPalavrasReservadas.Add('where');
+
+  if aTexto <> '' then
+    Result := vListaPalavrasReservadas.IndexOf(LowerCase(aTexto)) <> - 1;
+end;
+
+function NomeDeTabelas(aTexto: String): Boolean;
+var
+  vListaTabelasReservadas : TStringList;
+begin
+  Result := False;
+
+  vListaTabelasReservadas := TStringList.Create;
+  vListaTabelasReservadas.Clear;
+
+  vListaTabelasReservadas.Add('clientes');
+  vListaTabelasReservadas.Add('bancos');
+  vListaTabelasReservadas.Add('agencias');
+  vListaTabelasReservadas.Add('operacoes');
+  vListaTabelasReservadas.Add('eventoscobranca');
+  vListaTabelasReservadas.Add('parcelas');
+
+  if aTexto <> '' then
+    Result := vListaTabelasReservadas.IndexOf(LowerCase(aTexto)) <> - 1;
+end;
+
+function Numeros(aTexto: String): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+
+  for i := 1 to Length(aTexto) do
+  begin
+    case aTexto[i] of
+      '0'..'9':;
+      else
+        Exit;
+    end;
+  end;
+
+  Result := True;
+end;
+
+function TMemo.VisibleLines: Integer;
+begin
+  Result := Height div (Abs(Self.Font.Height) + 2);
+end;
+
+function TMemo.TopLine: Integer;
+begin
+  Result := SendMessage(Self.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+end;
+
+procedure TMemo.Change;
+begin
+  Invalidate;
+end;
+
+function TMemo.Col: Integer;
+begin
+  Result := Self.SelStart - SendMessage(Self.Handle, EM_LINEINDEX, SendMessage(Self.Handle, EM_LINEFROMCHAR, Self.SelStart, 0), 0);
+end;
+
+procedure TMemo.WMPaint(var Message: TWMPaint);
+var
+  PS         : TPaintStruct;
+  DC         : HDC;
+  Canvas     : TCanvas;
+  vCorAntiga : TColor;
+  Size       : TSize;
+
+  i,
+  x,
+  y,
+  Max       : Integer;
+
+  s,
+  vPalavra,
+  vPalavraAnterior  : String;
+begin
+  DC := Message.DC;
+
+  if DC = 0 then
+    DC := BeginPaint(Handle, PS);
+
+  Canvas := TCanvas.Create;
+  try
+    vCorAntiga       := Font.Color;
+    Canvas.Handle    := DC;
+    Canvas.Font.Name := Font.Name;
+    Canvas.Font.Size := Font.Size;
+
+    with Canvas do
+    begin
+      Max := TopLine + VisibleLines;
+
+      if Max > Pred(Lines.Count) then
+        Max := Pred(Lines.Count);
+
+      Brush.Color := Self.Color;
+      FillRect(Self.ClientRect);
+      y := 1;
+
+      for i := TopLine to Max do
+      begin
+        x := 2;
+        s := Lines[i];
+
+        //Detectando palavra linha a linha
+        vPalavra := ProximaPalavra(s, vPalavraAnterior);
+        while vPalavra <> '' do
+        begin
+          Font.Color := vCorAntiga;
+          TextOut(x, y, vPalavraAnterior);
+          GetTextExtentPoint32(DC, PChar(vPalavraAnterior), Length(vPalavraAnterior), Size);
+          Inc(x, Size.cx);
+
+          Font.Color := clBlack; //Cor padrão das palavras
+
+          if PalavraReservada(vPalavra) then //Se encontrou palavra
+          begin
+            Font.Color := clBlue;
+            TextOut(x, y, vPalavra);
+          end
+          else if Numeros(vPalavra) then //Se encontrou numero
+          begin
+            Font.Color := clRed;
+            TextOut(x, y, vPalavra);
+          end
+          else if NomeDeTabelas(vPalavra) then //Se encontrou nome de Tabela
+          begin
+            Font.Color := clGreen;
+            TextOut(x, y, vPalavra);
+          end
+          else
+            TextOut(x, y, vPalavra);
+
+          GetTextExtentPoint32(DC, PChar(vPalavra), Length(vPalavra), Size);
+          Inc(x, Size.cx);
+
+          vPalavra := ProximaPalavra(s, vPalavraAnterior);
+
+          if (s = '') and (vPalavraAnterior <> '') then
+          begin
+            Font.Color := vCorAntiga;
+            TextOut(x, y, vPalavraAnterior);
+          end;
+        end;
+
+        if (s = '') and (vPalavraAnterior <> '') then
+        begin
+          Font.Color := vCorAntiga;
+          TextOut(x, y, vPalavraAnterior);
+        end;
+
+        s := 'W';
+        GetTextExtentPoint32(DC, PChar(s), Length(s), Size);
+        Inc(y, Size.cy);
+      end;
+    end;
+  finally
+    if Message.DC = 0 then
+      EndPaint(Handle, PS);
+  end;
+
+  Canvas.Free;
+end;
+
+procedure TForm9.Memo1MouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  Memo1.Invalidate;
+end;
+
+end.
