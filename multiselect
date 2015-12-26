@@ -1,0 +1,25 @@
+procedure TForm9.Button1Click(Sender: TObject);
+begin
+  CheckListBox1.OnClickCheck := NaoPermiteMultiSelect;
+end;
+
+procedure TForm9.Button2Click(Sender: TObject);
+begin
+  CheckListBox1.OnClickCheck := nil;
+end;
+
+procedure TForm9.NaoPermiteMultiSelect(Sender: TObject);
+var
+  i: Integer;
+begin
+  if CheckListBox1.Checked[CheckListBox1.ItemIndex] then
+  begin
+    CheckListBox1.Items.BeginUpdate;
+    for i := 0 to Pred(CheckListBox1.Items.Count) do
+      if (i = CheckListBox1.ItemIndex) then
+        Form9.Caption := CheckListBox1.Items.Strings[i]
+      else
+        CheckListBox1.Checked[i] := False;
+    CheckListBox1.Items.EndUpdate;
+  end;
+end;
