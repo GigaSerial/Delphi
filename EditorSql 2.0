@@ -1,0 +1,97 @@
+if (ssCtrl in Shift) and (Key= VK_SPACE) then //Ctrl+Espaço
+
+StatusBar1.Panels[0].Text :='Linha: '+IntToStr(Memo1.CaretPos.Y + 1) + ' - Coluna: '+IntToStr(Memo1.CaretPos.X);
+
+function TForm9.InputCheckListBox(const AList: TStrings): string;
+
+  function GetCharSize(Canvas: TCanvas): TPoint;
+  var
+    I: Integer;
+    Buffer: array[0..51] of Char;
+  begin
+    for I := 0 to 25 do Buffer[I] := Chr(I + Ord('A'));
+    for I := 0 to 25 do Buffer[I + 26] := Chr(I + Ord('a'));
+    GetTextExtentPoint(Canvas.Handle, Buffer, 52, TSize(Result));
+    Result.X := Result.X div 52;
+  end;
+
+var
+  Form : TForm;
+  CLB_Itens   : TCheckListBox;
+  DialogUnits : TPoint;
+
+  i,
+  ButtonTop,
+  ButtonWidth,
+  ButtonHeight : Integer;
+begin
+  Result := '';
+  Form   := TForm.Create(Application);
+
+  with Form do
+    try
+      Canvas.Font  := Font;
+      DialogUnits  := GetCharSize(Canvas);
+      BorderStyle  := bsNone;
+      ClientWidth  := MulDiv(250, DialogUnits.X, 4);
+      Position     := poScreenCenter;
+
+      CLB_Itens := TCheckListBox.Create(Form);
+
+      with CLB_Itens do
+      begin
+        Parent := Form;
+        Items.Assign(AList);
+        ItemIndex   := 0;
+        Width     := MulDiv(250, DialogUnits.X, 4);
+        Height    := MulDiv(150, DialogUnits.X, 4);
+      end;
+
+      ButtonTop    := CLB_Itens.Top + CLB_Itens.Height + 15;
+      ButtonWidth  := MulDiv(50, DialogUnits.X, 4);
+      ButtonHeight := MulDiv(14, DialogUnits.Y, 8);
+
+      with TButton.Create(Form) do
+      begin
+        Parent      := Form;
+        Caption     := 'OK';
+        ModalResult := mrOk;
+        Default     := True;
+        SetBounds(MulDiv(38, DialogUnits.X, 4), ButtonTop, ButtonWidth, ButtonHeight);
+      end;
+
+      with TButton.Create(Form) do
+      begin
+        Parent      := Form;
+        Caption     := 'Cancelar';
+        ModalResult := mrCancel;
+        Cancel      := True;
+        SetBounds(MulDiv(92, DialogUnits.X, 4), CLB_Itens.Top + CLB_Itens.Height + 15, ButtonWidth, ButtonHeight);
+        Form.ClientHeight := Top + Height + 13;
+      end;
+
+      if ShowModal = mrOk then
+      begin
+        if CLB_Itens.Items.Count > 1 then
+        begin
+          for i := 0 to Pred(CLB_Itens.Items.Count) do
+          begin
+            if (CLB_Itens.Checked[i]) then
+              if (Result = '') then
+                Result := CLB_Itens.Items[i]
+              else
+                Result := Result +#13#10+ '             ,' + CLB_Itens.Items[i];
+          end;
+        end
+        else
+        begin
+          Result := CLB_Itens.Items[i];
+        end;
+
+        Result := Result +#13#10+'  FROM ';
+      end;
+
+    finally
+      Form.Free;
+    end;
+end;
