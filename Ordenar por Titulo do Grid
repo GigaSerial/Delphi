@@ -1,0 +1,31 @@
+var
+  enum_IndexOption: TIndexOptions;
+  str_IndexAsc, str_IndexDesc, str_IndexName: String;
+begin
+  if (Column.Field.FieldKind = fkData) then
+  begin
+    str_IndexAsc := Concat('asc_', Column.FieldName);
+    str_IndexDesc := Concat('desc_', Column.FieldName);
+
+    str_IndexName := '';
+    enum_IndexOption := [];
+
+    if (dmPrincipal.cdsItem.IndexName = str_IndexAsc) then
+    begin
+      str_IndexName := str_IndexDesc;
+      enum_IndexOption := [ixDescending];
+    end
+    else if (dmPrincipal.cdsItem.IndexName = str_IndexDesc) then
+    begin
+      str_IndexName := str_IndexAsc;
+    end
+    else
+    begin
+      str_IndexName := str_IndexAsc;
+    end;
+
+    dmPrincipal.cdsItem.IndexDefs.Clear;
+
+    dmPrincipal.cdsItem.IndexDefs.Add(str_IndexName, Column.FieldName, enum_IndexOption);
+    dmPrincipal.cdsItem.IndexName := str_IndexName;
+  end;
