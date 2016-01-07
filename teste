@@ -1,0 +1,75 @@
+WebBrowser1.OleObject.Document.ParentWindow.ScrollBy(0, +100);
+
+
+procedure TForm9.btnOkClick(Sender: TObject);
+begin
+  if editCep.Text = '     -   ' then
+  begin
+    ShowMessage('adicionar um cep...');
+  end
+  else
+  begin
+    ConsultaCEP(editCep.Text);
+  end;
+end;
+
+procedure TForm9.ConsultaCEP(Cep: String);
+var
+  tempXML,
+  tempNodePAI,
+  tempNodeFilho :IXMLNode;
+  I :Integer;
+begin
+   Memo1.Clear;
+   XMLDocument1.FileName := 'https://viacep.com.br/ws/'+Trim(Cep)+'/xml/';
+   XMLDocument1.Active := true;
+   tempXML := XMLDocument1.DocumentElement;
+
+   tempNodePAI := tempXML.ChildNodes.FindNode('logradouro');
+
+   for i := 0 to tempNodePAI.ChildNodes.Count - 1 do
+   begin
+      tempNodeFilho := tempNodePAI.ChildNodes[i];
+      memo1.Lines.Add('Logradouro...: ' +  tempNodeFilho.Text);
+   end;
+
+   tempNodePAI := tempXML.ChildNodes.FindNode('bairro');
+   for i := 0 to tempNodePAI.ChildNodes.Count - 1 do
+   begin
+      tempNodeFilho := tempNodePAI.ChildNodes[i];
+      memo1.Lines.Add('Bairro.......: ' +  tempNodeFilho.Text);
+   end;
+
+
+  tempNodePAI := tempXML.ChildNodes.FindNode('localidade');
+   for i := 0 to tempNodePAI.ChildNodes.Count - 1 do
+   begin
+      tempNodeFilho := tempNodePAI.ChildNodes[i];
+      memo1.Lines.Add('Localidade....: ' +  tempNodeFilho.Text);
+   end;
+
+
+  tempNodePAI := tempXML.ChildNodes.FindNode('uf');
+   for i := 0 to tempNodePAI.ChildNodes.Count - 1 do
+   begin
+      tempNodeFilho := tempNodePAI.ChildNodes[i];
+      memo1.Lines.Add('UF............: ' +  tempNodeFilho.Text);
+   end;
+
+
+   tempNodePAI := tempXML.ChildNodes.FindNode('ibge');
+   for i := 0 to tempNodePAI.ChildNodes.Count - 1 do
+   begin
+      tempNodeFilho := tempNodePAI.ChildNodes[i];
+      memo1.Lines.Add('IBGE..........: ' + tempNodeFilho.Text);
+   end;
+
+
+   tempNodePAI := tempXML.ChildNodes.FindNode('gia');
+   for i := 0 to tempNodePAI.ChildNodes.Count - 1 do
+   begin
+      tempNodeFilho := tempNodePAI.ChildNodes[i];
+      memo1.Lines.Add('GIA...........: ' +  tempNodeFilho.Text);
+   end;
+
+end;
