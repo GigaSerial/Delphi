@@ -1,0 +1,59 @@
+
+uses
+  UWebBrowserWrapper;
+
+private
+  fWBW : TWebBrowserWrapper;
+
+
+procedure TMainForm.FormShow(Sender: TObject);
+var
+  Wrapper: TWebBrowserWrapper;
+begin
+  // Load help html from resources to r/h browser window
+  Wrapper := TWebBrowserWrapper.Create(wbHelp);
+  try
+    Wrapper.NavigateToResource(HInstance, 'HELP_HTML');
+  finally
+    Wrapper.Free;
+  end;
+  // Load blank document into test browser
+  Wrapper := TWebBrowserWrapper.Create(wbTest);
+  try
+    Wrapper.NavigateToURL('about:blank');
+  finally
+    Wrapper.Free;
+  end;
+end;
+
+
+end.
+
+
+procedure TWebBrowserWrapper.NavigateToURL(const URL: string);
+  // ---------------------------------------------------------------------------
+  procedure Pause(const ADelay: Cardinal);
+  var
+    StartTC: Cardinal;  // tick count when routine called
+  begin
+    StartTC := Windows.GetTickCount;
+    repeat
+      Application.ProcessMessages;
+    until Int64(Windows.GetTickCount) - Int64(StartTC) >= ADelay;
+  end;
+  // ---------------------------------------------------------------------------
+var
+  Flags: OleVariant;  // flags that determine action
+begin
+  // Don't record in history
+  Flags := navNoHistory;
+  if AnsiStartsText('res://', URL) or AnsiStartsText('file://', URL)
+    or AnsiStartsText('about:', URL) or AnsiStartsText('javascript:', URL)
+    or AnsiStartsText('mailto:', URL) then
+    // don't use cache for local files
+    Flags := Flags or navNoReadFromCache or navNoWriteToCache;
+  // Do the navigation and wait for it to complete
+  WebBrowser.Navigate(URL, Flags);
+  while WebBrowser.ReadyState <> READYSTATE_COMPLETE do
+    Pause(5);
+end;
