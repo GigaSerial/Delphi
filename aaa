@@ -13,8 +13,6 @@ type
   protected
     procedure Change; override;
   public
-    PosLabel: TLabel;
-    function Col: Integer;
     function TopLine: Integer;
     function VisibleLines: Integer;
   end;
@@ -23,21 +21,27 @@ type
     Memo1: TMemo;
     Button1: TButton;
     PopupMenu1: TPopupMenu;
-    procedure Memo1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    Ocorrencia: TMenuItem;
+    Sugesto: TMenuItem;
+    PopupMenu2: TPopupMenu;
     function LastWord(const s: String): String;
     procedure Button1Click(Sender: TObject);
     procedure Memo1Change(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure Memo1Click(Sender: TObject);
-    procedure AdicionarClick(Sender: TObject);
+    procedure Memo1MouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure Memo1MouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure SugestoClick(Sender: TObject);
   private
     { Private declarations }
     vCorrigir : Boolean;
     vListaTabelasReservadas : TStringList;
     function NomeDeTabelas(aTexto: String): Boolean;
-    function Posicao(aTexto : String; aPosicao : Integer):Integer;
     function SelectWordUnderCaret(AMemo: TMemo): string;
     procedure ItemClick(Sender: TObject);
+    function PalavraCorrigida(aTexto: String): String;
+    function RemoveAcento(Str: string): string;
   public
     { Public declarations }
   end;
@@ -52,44 +56,6 @@ implementation
 procedure TForm9.Memo1Change(Sender: TObject);
 begin
   Memo1.Invalidate;
-end;
-
-procedure TForm9.Memo1Click(Sender: TObject);
-var
-  vSugestao1,
-  vSugestao2,
-  vSugestao3,
-  vSugestao4,
-  vSugestao5,
-  vPalavraErrada : TMenuItem;
-
-  vMouseButton   : TMouseButton;
-begin
-    PopupMenu1.Items.Clear;
-    vSugestao1     := TMenuItem.Create(Self);
-    vSugestao2     := TMenuItem.Create(Self);
-    vSugestao3     := TMenuItem.Create(Self);
-    vSugestao4     := TMenuItem.Create(Self);
-    vSugestao5     := TMenuItem.Create(Self);
-    vPalavraErrada := TMenuItem.Create(Self);
-    vPalavraErrada.Caption := 'Palavra não encontrada: '+SelectWordUnderCaret(Memo1);
-    PopupMenu1.Items.Add(vPalavraErrada);
-
-
-    PopupMenu1.Items.Add(vSugestao1);
-    PopupMenu1.Items.Add(vSugestao2);
-    PopupMenu1.Items.Add(vSugestao3);
-    PopupMenu1.Items.Add(vSugestao4);
-    PopupMenu1.Items.Add(vSugestao5);
-
-
-    vSugestao1.Caption := 'Sugestão 1: ';
-    vSugestao2.Caption := 'Sugestão 2: ';
-    vSugestao3.Caption := 'Sugestão 3: ';
-    vSugestao4.Caption := 'Sugestão 4: ';
-    vSugestao5.Caption := 'Sugestão 5: ';
-
-    PopupMenu1.Popup(Mouse.CursorPos.x,Mouse.CursorPos.y);
 end;
 
 procedure TForm9.ItemClick(Sender: TObject);
@@ -132,33 +98,47 @@ begin
    aMemo.SelLength := Length(Result);
 end;
 
-procedure TForm9.Memo1KeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+procedure TForm9.SugestoClick(Sender: TObject);
 var
-  strLinha: String;
-  Parte : TStringList;
-  Linha, Coluna : Integer;
+  vTemp : String;
 begin
-  if Key = 190 then
-  begin
-    Linha := Memo1.Perform(EM_LINEFROMCHAR, Memo1.SelStart, 0);
-    Coluna:= Memo1.SelStart - Perform(EM_LINEINDEX,linha, 0);
-    strLinha := Memo1.Lines[Linha];
-    {Parte := TStringList.Create;
-    Parte.Delimiter := '.';
-    Parte.DelimitedText := strLinha;}
-    ShowMessage(LastWord(strLinha));
-  end;
+  vTemp := Copy(Sugesto.Caption,Pos(':',Sugesto.Caption)+1,Length(Sugesto.Caption));
+  Memo1.Text := StringReplace(Memo1.Text,RemoveAcento(vTemp),vTemp,[rfReplaceAll]);
 end;
 
-procedure TForm9.AdicionarClick(Sender: TObject);
+procedure TForm9.Memo1MouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
 begin
-  //ShowMessage(SelectWordUnderCaret(Memo1));
+  if (Button = mbRight) then
+  begin
+    mouse_event(MOUSEEVENTF_LEFTDOWN,Mouse.CursorPos.x,mouse.CursorPos.y,0,0);
+    mouse_event(MOUSEEVENTF_LEFTUP,Mouse.CursorPos.x,mouse.CursorPos.y,0,0);
+  end;
+  Memo1.Invalidate;
+end;
+
+procedure TForm9.Memo1MouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+  vPalavra : String;
+begin
+  vPalavra := SelectWordUnderCaret(Memo1);
+  PopupMenu1.Items[0].Caption := 'Ocorrência: ';
+  PopupMenu1.Items[1].Caption := 'Sugestões: ';
+  if (Button = mbRight) and
+     (vPalavra   <> '') then
+  begin
+    Ocorrencia.Caption := Ocorrencia.Caption + vPalavra;
+    Sugesto.Caption    := Sugesto.Caption + PalavraCorrigida(vPalavra);
+
+    PopupMenu1.Popup(Mouse.CursorPos.x,Mouse.CursorPos.y);
+  end;
 end;
 
 procedure TForm9.Button1Click(Sender: TObject);
 begin
   vCorrigir := True;
-  vListaTabelasReservadas.LoadFromFile('D:\Repositorio\pt-br.txt');
+  vListaTabelasReservadas.LoadFromFile('D:\Dicionario\ComAcentos.txt');
   Memo1.Change;
 end;
 
@@ -166,7 +146,6 @@ procedure TForm9.FormCreate(Sender: TObject);
 begin
   vListaTabelasReservadas := TStringList.Create;
   vListaTabelasReservadas.Clear;
-  vListaTabelasReservadas.LoadFromFile('D:\Repositorio\pt-br.txt');
 end;
 
 function TForm9.LastWord(const s: String): String;
@@ -213,65 +192,47 @@ begin
   end;
 end;
 
-function PalavraReservada(aTexto: String): Boolean;
-var
-  vListaPalavrasReservadas : TStringList;
-begin
-  Result := False;
-
-  vListaPalavrasReservadas := TStringList.Create;
-  vListaPalavrasReservadas.Clear;
-
-  vListaPalavrasReservadas.Add('select');
-  vListaPalavrasReservadas.Add('from');
-  vListaPalavrasReservadas.Add('with');
-  vListaPalavrasReservadas.Add('if');
-  vListaPalavrasReservadas.Add('case');
-  vListaPalavrasReservadas.Add('order');
-  vListaPalavrasReservadas.Add('by');
-  vListaPalavrasReservadas.Add('group');
-  vListaPalavrasReservadas.Add('else');
-  vListaPalavrasReservadas.Add('for');
-  vListaPalavrasReservadas.Add('from');
-  vListaPalavrasReservadas.Add('substring');
-  vListaPalavrasReservadas.Add('cast');
-  vListaPalavrasReservadas.Add('where');
-
-  if aTexto <> '' then
-    Result := vListaPalavrasReservadas.IndexOf(LowerCase(aTexto)) <> - 1;
-end;
-
 function TForm9.NomeDeTabelas(aTexto: String): Boolean;
 begin
   Result := False;
-
 
   if (aTexto <> '') and
      (vCorrigir = True) then
     Result := vListaTabelasReservadas.IndexOf(LowerCase(aTexto)) <> - 1;
 end;
 
-function TForm9.Posicao(aTexto: String; aPosicao: Integer): Integer;
+function TForm9.PalavraCorrigida(aTexto: String): String;
+var
+  vTemp : String;
+  vSemAcentos : TStringList;
 begin
+  Result := '';
+  vListaTabelasReservadas.Clear;
+  vListaTabelasReservadas.LoadFromFile('D:\Dicionario\ComAcentos.txt');
 
+  vSemAcentos := TStringList.Create;
+  vSemAcentos.Clear;
+  vSemAcentos.LoadFromFile('D:\Dicionario\SemAcentos.txt');
+
+  if (vSemAcentos.IndexOf(LowerCase(aTexto)) > - 1) then
+    Result := vListaTabelasReservadas.Strings[vSemAcentos.IndexOf(LowerCase(aTexto))];
+  vListaTabelasReservadas.Clear;
+  vSemAcentos.Clear;
 end;
 
-function Numeros(aTexto: String): Boolean;
+function TForm9.RemoveAcento(Str: string): string;
+const
+  ComAcento = 'àâêôûãõáéíóúçüÀÂÊÔÛÃÕÁÉÍÓÚÇÜ';
+  SemAcento = 'aaeouaoaeioucuAAEOUAOAEIOUCU';
 var
-  i: Integer;
-begin
-  Result := False;
-
-  for i := 1 to Length(aTexto) do
+   x: Integer;
+begin;
+  for x := 1 to Length(Str) do
   begin
-    case aTexto[i] of
-      '0'..'9':;
-      else
-        Exit;
-    end;
+  if Pos(Str[x],ComAcento) <> 0 then
+    Str[x] := SemAcento[Pos(Str[x], ComAcento)];
   end;
-
-  Result := True;
+  Result := Str;
 end;
 
 function TMemo.VisibleLines: Integer;
@@ -287,11 +248,6 @@ end;
 procedure TMemo.Change;
 begin
    Form9.Memo1.Invalidate;
-end;
-
-function TMemo.Col: Integer;
-begin
-  Result := Self.SelStart - SendMessage(Self.Handle, EM_LINEINDEX, SendMessage(Self.Handle, EM_LINEFROMCHAR, Self.SelStart, 0), 0);
 end;
 
 procedure TMemo.WMPaint(var Message: TWMPaint);
